@@ -557,7 +557,7 @@ def find_closed_holes(preprocessedimage):
 
     # 取差集后对图像进行闭运算操作,填补小孔洞
     # 定义矩形结构元
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (1, 1))
     closedimg = cv2.morphologyEx(imgsub, cv2.MORPH_CLOSE, kernel, iterations=1)
     cv_show("image after close operation", closedimg)
 

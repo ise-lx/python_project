@@ -84,6 +84,44 @@ def crap_and_rotate(img, rect):
     return warped_gray
 
 
+
+# 计算两个轮廓之间的最小距离
+def cal_two_contours_distance(cont1,cont2):
+    min_distance = 1000
+    for i in range(len(cont1)):
+        point1 = cont1[i]
+        point1_wid = point1[0][0]
+        point1_hig = point1[0][1]
+        for j in range(len(cont2)):
+            point2 = cont2[j]
+            point2_wid = point2[0][0]
+            point2_hig = point2[0][1]
+            temp_dist = math.sqrt((point1_wid-point2_wid)**2+(point1_hig-point2_hig)**2)
+            if temp_dist < min_distance:
+                min_distance = temp_dist
+
+    return min_distance
+
+
+# 窗口的内的所有轮廓计算距离矩阵
+def distance_matrix(contours):
+    # 先构造一个空的正方形矩阵(方阵)
+    dis_mat = np.zeros((len(contours),len(contours)))
+    for i in range((len(contours)-1)):
+        cont1 = contours[i]
+        for j in range(i+1,len(contours)):
+            cont2 = contours[j]
+            temp_distance = cal_two_contours_distance(cont1,cont2)
+            dis_mat[i][j] = temp_distance
+    return dis_mat
+
+
+
+
+
+
+
+
 # 改进后的占空比计算函数
 def cal_duty_cycle_in_rect(cropped_rotated_image, edge_length):
     # 中值滤波去除面积微小的区域
