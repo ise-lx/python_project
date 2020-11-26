@@ -1,29 +1,23 @@
-# -*- coding: utf-8 -*-
+# 检测堵孔缺陷加入最小生成树
 '''
-
-   @Time    : 2020/11/15
-   @Author  : liuxu
-   @File    : hole_ununiform_detect.py
-   @Software: PyCharm
-
+@Author : liuxu
+@Date : 2020/11/26
 '''
-
-# 检测孔径不均
 import cv2
-import numpy as np
-import matplotlib.pyplot as plt
+import os
 import math
-
+import matplotlib.pyplot as plt
+import numpy as np
 
 # 待检测图像路径
-filepath = "./normal_images/1.jpg"
-
+filepath = "./closed_holes_images/closed_hole.JPG"
 
 # 设置图像的宽和高
 IMAGE_WIDTH = 750
 IMAGE_HEIGHT = 750
 
-# 存放图像处理过程的列表
+# 所有图像
+
 all_images = []
 
 
@@ -32,16 +26,16 @@ def plt_show_one_pic(pic):
     temp_img = pic[0]
     title = pic[1]
     plt.imshow(temp_img)
-    plt.title(title,fontsize=8)
+    plt.title(title, fontsize=8)
     plt.xticks([])
     plt.yticks([])
     plt.show()
+
 
 # 显示图像
 def cv_show(name, img):
     cv2.imshow(name, img)
     # cv2.waitKey(0)
-
 
 
 # 对图像resize处理
@@ -52,112 +46,58 @@ def row_image_resize(image, width, height):
     return image
 
 
-# 读入一张图像,返回
-def read_an_gray_image(image_path):
-    return cv2.imread(image_path)
-
-
-
-
 # #图像预处理函数
 def pre_process(rowimage):
     # 显示原图
     # cv_show("row image", rowimage)
     grayimage = cv2.cvtColor(rowimage, cv2.COLOR_BGR2GRAY)  # 灰度化
-    all_images.append((grayimage,"grayimage"))              # 填入列表
+    all_images.append((grayimage, "grayimage"))  # 填入列表
     resizedimage = row_image_resize(grayimage, IMAGE_WIDTH, IMAGE_HEIGHT)  # resize
-    all_images.append((resizedimage,"resizedimage"))        # 填入列表
-    cv_show("resizeimg",resizedimage)
-    #
-    # blur_image = cv2.blur(resizedimage,(3,3))
-    # cv_show("blur_img",blur_image)
-
+    all_images.append((resizedimage, "resizedimage"))  # 填入列表
+    cv_show("resizeimg", resizedimage)
     # 运用大津算法进行图像分割
     ret, im_th = cv2.threshold(resizedimage, 0, 255, cv2.THRESH_OTSU)
     cv_show("image after OTSU", im_th)
-    all_images.append((im_th,"OTSU"))
-
-    # 闭运算操作 3x3
-    # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, 3))
-    # closedimg = cv2.morphologyEx(im_th, cv2.MORPH_CLOSE, kernel, iterations=1)
-
-    # cv_show("after closed 3x3:",closedimg)
-    #
-    # 闭运算操作 5x5
-    #
-    # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
-    # closedimg = cv2.morphologyEx(im_th, cv2.MORPH_CLOSE, kernel, iterations=1)
-    #
-    # cv_show("after closed 5x5:",closedimg)
-
-    # #中值滤波去除椒盐噪声,卷积核为3x3,中值滤波能消除裂缝,带来不利影响,所以不一定要用中值滤波
-    # blur_image = cv2.medianBlur(im_th, 3)
-    # #显示中值滤波处理后图像
-    # cv_show("image after medianBlur", blur_image)
-    # print("image shape:", blur_image.shape)
-    # print("image shape 0:", blur_image.shape[0])
-    # print("image shape 1:", blur_image.shape[1])
-
-    # return blur_image
-    #
-    # return closedimg
+    all_images.append((im_th, "OTSU"))
     return im_th
 
 
+# 对图像进行旋转和裁剪操作
+def crap_and_rotate(img, rect):
+    box = cv2.boxPoints(rect)
+    box = np.int0(box)
+    # 对图像进行剪裁和旋转至水平
+    width = int(rect[1][0])  # 图像的宽度
+    height = int(rect[1][1])  # 图像的高度
+    src_pts = box.astype("float32")
+    dst_pts = np.array([[0, height - 1],
+                        [0, 0],
+                        [width - 1, 0],
+                        [width - 1, height - 1]], dtype="float32")
 
+    M = cv2.getPerspectiveTransform(src_pts, dst_pts)
+    warped = cv2.warpPerspective(img, M, (width, height))
 
-
-# 求窗口内所有的孔径，返回窗口内所有孔洞的孔径
-def cal_all_hole_size(contours):
-    radius_list = []
-    for i in range(len(contours)):
-        temp_con = contours[i]
-        (x,y),radius = cv2.minEnclosingCircle(temp_con)
-        if radius > 0:
-            radius_list.append(radius)
-    return radius_list
-
-
-
-# 求滑动窗口内孔径的平均值
-def cal_mean_hole_size(contours):
-    radius_list = []
-    for i in range(len(contours)):
-        temp_con = contours[i]
-        (x, y), radius = cv2.minEnclosingCircle(temp_con)
-        if radius > 0:
-            radius_list.append(radius)
-
-    mean_radius = np.mean(radius_list)
-
-    print("孔径的平均值为：",mean_radius)
-
-
+    cv_show("cropped and rotated! ", warped)
+    all_images.append((warped, "wrop&rotate"))
+    warped_gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
+    return warped_gray
 
 
 # 改进后的占空比计算函数
 def cal_duty_cycle_in_rect(cropped_rotated_image, edge_length):
-
     # 中值滤波去除面积微小的区域
     cropped_rotated_image = cv2.medianBlur(cropped_rotated_image, 3)
 
-
-
-
     print("根据占空比特征检测缺陷")
-    # 是否存在堵孔缺陷的标志
-    closed_holes_flag = 0
-    # print("before shape: ",cropped_rotated_image.shape)
-    # print("edge_length: ",edge_length)
-
-    # print("计算窗口内孔洞数量前的图像尺寸：",cropped_rotated_image.shape)
-    # print("窗口的长度：",edge_length)
     img = cropped_rotated_image.copy()
-    width_0 = img.shape[1]  # numpy的shape方法和
+
     height_0 = img.shape[0]
+    width_0 = img.shape[1]
+
     # 减小尺寸后的图像
     mini_img = img[5:(height_0 - 5), 5:(width_0 - 5)]
-    all_images.append((mini_img,"mini_img"))        # 填入列表
+    all_images.append((mini_img, "mini_img"))  # 填入列表
     print("mini_img shape: ", mini_img.shape)
 
     # 减小后的尺寸
@@ -183,7 +123,6 @@ def cal_duty_cycle_in_rect(cropped_rotated_image, edge_length):
     white_img = black_img
     white_img_rgb = cv2.cvtColor(white_img, cv2.COLOR_GRAY2BGR)
 
-
     mini_img_rgb = cv2.cvtColor(mini_img, cv2.COLOR_GRAY2BGR)
     for row in range(0, int(height - edge_length), 10):
         for col in range(0, int(width - edge_length), 10):
@@ -203,10 +142,8 @@ def cal_duty_cycle_in_rect(cropped_rotated_image, edge_length):
 
             if temp_rate < 0.05:
                 # mini_img_with_rect = cv2.drawContours(mini_img_rgb, [box], 0, (0, 0, 255), 1)
-                cv2.drawContours(white_img, [box], 0, (255, 255, 255),cv2.FILLED)
+                cv2.drawContours(white_img, [box], 0, (255, 255, 255), cv2.FILLED)
                 # cv_show("mini_img_with_rect: ", mini_img_with_rect)
-
-
 
     # 把检测的滑动窗口用凸包算法连接起来
     contours, _ = cv2.findContours(white_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -214,13 +151,8 @@ def cal_duty_cycle_in_rect(cropped_rotated_image, edge_length):
     # cv2.drawContours(white_img_rgb,contours,-1,(0,0,255),thickness=1)
     # cv2.imshow("contours",white_img_rgb)
 
-    cv2.drawContours(mini_img_rgb,contours,-1,(0,0,255),thickness=2)
-    cv2.imshow("contours",mini_img_rgb)
-
-
-
-
-
+    cv2.drawContours(mini_img_rgb, contours, -1, (0, 0, 255), thickness=2)
+    cv2.imshow("contours", mini_img_rgb)
 
     print("min_value_rate: ", min_value_rate)
     if min_value_rate < 0.05:
@@ -228,55 +160,16 @@ def cal_duty_cycle_in_rect(cropped_rotated_image, edge_length):
     else:
         print("该过滤网不存在堵孔缺陷")
 
-    cv2.imshow("white with rect",white_img)
-
-
+    cv2.imshow("white with rect", white_img)
 
     return rate_arr
 
 
-# 对图像进行旋转和裁剪操作
-def crap_and_rotate(img,rect):
-
-    box = cv2.boxPoints(rect)
-    box = np.int0(box)
-    # 对图像进行剪裁和旋转至水平
-    width = int(rect[1][0])  # 图像的宽度
-    height = int(rect[1][1])  # 图像的高度
-    src_pts = box.astype("float32")
-    dst_pts = np.array([[0, height - 1],
-                        [0, 0],
-                        [width - 1, 0],
-                        [width - 1, height - 1]], dtype="float32")
-
-    M = cv2.getPerspectiveTransform(src_pts, dst_pts)
-    warped = cv2.warpPerspective(img, M, (width, height))
-
-    cv_show("cropped and rotated! ", warped)
-    all_images.append((warped,"wrop&rotate"))
-    warped_gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
-    return warped_gray
-
-
-
-
-
-
 # 找出区域
-def find_closed_holes(preprocessedimage):
+def detect_closed_holes(preprocessedimage):
     # 在分割后的图像找轮廓
 
-    # brefore_closed_5x5 = preprocessedimage.copy()
-    # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (4, 4))
-    # closedimg = cv2.morphologyEx(brefore_closed_5x5, cv2.MORPH_CLOSE, kernel, iterations=1)
-    # cv_show("after closed 5x5:",closedimg)
-
-    img = preprocessedimage.copy()
-    contours, hierarchy = cv2.findContours(img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    # print("contours type: ",type(contours))
-    # print("contours: ",contours)
-    # print("contours length: ",len(contours))
-
+    contours, hierarchy = cv2.findContours(preprocessedimage, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
     # print("轮廓的类型：",type(contours))     # type is list
     areas = []  # 轮廓所围成的面积构成的数组
     for idx in range(len(contours)):
@@ -299,13 +192,12 @@ def find_closed_holes(preprocessedimage):
     img_rgb = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
 
     img_with_rect = cv2.drawContours(img_rgb, [box], 0, (0, 0, 255), 2)
-    all_images.append((img_with_rect,"img_with_rect"))          # 填入列表
+    all_images.append((img_with_rect, "img_with_rect"))  # 填入列表
 
     cv_show("image with rect", img_with_rect)
 
-    new_img_with_rect = crap_and_rotate(img_with_rect,rect)
-    cv_show("new_img_with_rect",new_img_with_rect)
-
+    new_img_with_rect = crap_and_rotate(img_with_rect, rect)
+    cv_show("new_img_with_rect", new_img_with_rect)
 
     # # 画出样品的轮廓
     # img = preprocessedimage.copy()
@@ -325,7 +217,7 @@ def find_closed_holes(preprocessedimage):
     # 取差集
     imgsub = cv2.subtract(imgsub1, imgsub2)
 
-    all_images.append((imgsub,"sub"))
+    all_images.append((imgsub, "sub"))
     # 显示取差集后图像
     cv_show("image substraction", imgsub)
 
@@ -355,10 +247,9 @@ def find_closed_holes(preprocessedimage):
     # 在差集图像中画出轮廓
     image_with_cons = cv2.drawContours(image_find_contours, contours, -1, (51, 153, 255), 1)
 
-    all_images.append((image_with_cons,"image_with_cons"))
+    all_images.append((image_with_cons, "image_with_cons"))
 
     cv_show("image_with_cons: ", image_with_cons)
-
 
     # 对图像进行剪裁和旋转至水平
     width = int(rect[1][0])  # 图像的宽度
@@ -373,69 +264,26 @@ def find_closed_holes(preprocessedimage):
     warped = cv2.warpPerspective(image_with_cons, M, (width, height))
 
     cv_show("cropped and rotated! ", warped)
-    all_images.append((warped,"wrop&rotate"))
+    all_images.append((warped, "wrop&rotate"))
     warped_gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
-    all_images.append((warped_gray,"gray"))
+    all_images.append((warped_gray, "gray"))
 
-    # print("warpped gray: ", warped_gray)
-    # print("warpped gray shape: ", warped_gray.shape)
-    # print("warpped max vlaue:", np.max(warped_gray))
-    # print("warpped min value:", np.min(warped_gray))
-    # cv_show("warped_gray: ", warped_gray)
-
-    ###################################两种方法检测缺陷#########################################
+    # 检测缺陷
     # 根据窗口内的占空比
-    # tranversal_image_detect(warped_gray, int(warped_gray.shape[0]/5))    # 以宽的五分之一为窗口的边长
-    # 改进后占空比
-    # arr = cal_duty_cycle_in_rect(warped_gray, int(warped_gray.shape[0] / 5))
     arr = cal_duty_cycle_in_rect(warped_gray, int(warped_gray.shape[0] / 5))
-    # arr = cal_duty_cycle_in_rect(new_img_with_rect, int(warped_gray.shape[0] / 5))
-
-    # 根据窗口内的孔洞的数量
-    # arr = cal_cons_in_rect(warped_gray,int(warped_gray.shape[0]/5))
-    # print("holes num arr shape: ", arr.shape)
-    # print("holes num arr: ", arr)
-    # print("holes num arr mean: ", np.mean(arr))
-    # print("holes num arr var: ", np.var(arr))
-    # print("holes num std_dev: ", np.std(arr, ddof=1))
-    # plt_show_muti_pic(all_images)     # 一次显示多个
-
-
-    #
-    # # 一个一个地显示图像
-    # for im in all_images:
-    #     plt_show_one_pic(im)
-
 
 
 # 对单个图像检测
 def single_detection(imagepath):
-    rowimg = read_an_gray_image(imagepath)
+    rowimg = cv2.imread(imagepath)
     preproimg = pre_process(rowimg)
-    find_closed_holes(preproimg)
+    detect_closed_holes(preproimg)
 
 
-
-
-
-# main函数
 def main():
-    # 对一幅堵孔图像处理
     single_detection(filepath)
     cv2.waitKey(0)
-    # 对文件夹下所有存在堵孔的图像进行检测
-    # dictory_detection(sunken_img_dictoryname)
-
-    # 对文件下所有正常图像进行检测d
-    # dictory_detection(unsunken_img_dictoryname)
 
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
-
-
-
-
-
-

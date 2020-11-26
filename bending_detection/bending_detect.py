@@ -9,7 +9,7 @@ filepath = "./bending_image/bianxing_test.jpg"
 #
 # filepath = "./bending_image/test2.JPG"
 # filepath = "./bending_image/light_test12.jpg"
-# filepath = "./bending_image/normal.jpg"
+# filepath = "./bending_image/normal.jpg" 从
 # bending_img_dictoryname = "./bending_images/"
 # unbending_img_dictoryname = "./unbending_images"
 
