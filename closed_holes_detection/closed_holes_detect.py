@@ -148,6 +148,11 @@ def pre_process(rowimage):
 
     # 运用大津算法进行图像分割
     ret, im_th = cv2.threshold(resizedimage, 0, 255, cv2.THRESH_OTSU)
+
+    # 使用全局固定阈值处理
+    ret,im_th = cv2.threshold(resizedimage,int(ret+15),255,cv2.THRESH_BINARY)
+
+
     cv_show("image after OTSU", im_th)
     all_images.append((im_th, "OTSU"))
 
@@ -258,7 +263,7 @@ def cal_duty_cycle_in_rect(cropped_rotated_image, edge_length):
                 cv2.drawContours(white_img, [box], 0, (255, 255, 255), cv2.FILLED)
                 # cv_show("mini_img_with_rect: ", mini_img_with_rect)
 
-    # 把检测的滑动窗口用凸包算法连接起来
+    # 把检测的滑动窗口用轮廓算法连接起来
     contours, _ = cv2.findContours(white_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     # cv2.drawContours(white_img_rgb,contours,-1,(0,0,255),thickness=1)
@@ -614,7 +619,6 @@ def find_closed_holes(preprocessedimage):
     # 根据窗口内的占空比
     # tranversal_image_detect(warped_gray, int(warped_gray.shape[0]/5))    # 以宽的五分之一为窗口的边长
     # 改进后占空比
-    # arr = cal_duty_cycle_in_rect(warped_gray, int(warped_gray.shape[0] / 5))
     arr = cal_duty_cycle_in_rect(warped_gray, int(warped_gray.shape[0] / 5))
     # arr = cal_duty_cycle_in_rect(new_img_with_rect, int(warped_gray.shape[0] / 5))
 
