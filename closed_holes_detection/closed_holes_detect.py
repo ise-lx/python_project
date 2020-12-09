@@ -150,7 +150,7 @@ def pre_process(rowimage):
     ret, im_th = cv2.threshold(resizedimage, 0, 255, cv2.THRESH_OTSU)
 
     # 使用全局固定阈值处理
-    ret,im_th = cv2.threshold(resizedimage,int(ret+15),255,cv2.THRESH_BINARY)
+    ret,im_th = cv2.threshold(resizedimage,int(ret+25),255,cv2.THRESH_BINARY)
 
 
     cv_show("image after OTSU", im_th)
@@ -197,8 +197,18 @@ def cal_mean_hole_size(contours):
     print("孔径的平均值为：", mean_radius)
 
 
-# 改进后的占空比计算函数
+# 占空比计算函数
 def cal_duty_cycle_in_rect(cropped_rotated_image, edge_length):
+
+
+    # 正常区域占空比
+    normal_duty_list = []
+    # 非正常区域占空比
+    unnormal_duty_list = []
+
+
+
+
     # 中值滤波去除面积微小的区域
     cropped_rotated_image = cv2.medianBlur(cropped_rotated_image, 3)
 
@@ -258,10 +268,29 @@ def cal_duty_cycle_in_rect(cropped_rotated_image, edge_length):
             if temp_rate < min_value_rate:
                 min_value_rate = temp_rate
 
-            if temp_rate < 0.05:
+            if temp_rate < 0.055:
                 # mini_img_with_rect = cv2.drawContours(mini_img_rgb, [box], 0, (0, 0, 255), 1)
                 cv2.drawContours(white_img, [box], 0, (255, 255, 255), cv2.FILLED)
+                unnormal_duty_list.append(temp_rate)
+            else:
+                normal_duty_list.append(temp_rate)
+
                 # cv_show("mini_img_with_rect: ", mini_img_with_rect)
+    print("正常区域占空比列表：",normal_duty_list)
+    f1 = open("normal_duty_list.txt",'w')
+    f2 = open("unnormal_duty_list.txt",'w')
+
+    for line in normal_duty_list:
+        f1.write(str(line)+"\n")
+    f1.close()
+    for line in unnormal_duty_list:
+        f2.write(str(line)+"\n")
+    f2.close()
+
+    print("正常区域占空比列表的长度：",len(normal_duty_list))
+    print("非正常区域占空比列表：",unnormal_duty_list)
+    print("非正常区域占空比列表长度：",len(unnormal_duty_list))
+
 
     # 把检测的滑动窗口用轮廓算法连接起来
     contours, _ = cv2.findContours(white_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -273,7 +302,7 @@ def cal_duty_cycle_in_rect(cropped_rotated_image, edge_length):
     cv2.imshow("contours", mini_img_rgb)
 
     print("min_value_rate: ", min_value_rate)
-    if min_value_rate < 0.05:
+    if min_value_rate < 0.055:
         print("该过滤网存在堵孔缺陷")
     else:
         print("该过滤网不存在堵孔缺陷")
@@ -282,197 +311,6 @@ def cal_duty_cycle_in_rect(cropped_rotated_image, edge_length):
 
     return rate_arr
 
-
-# 加入计算孔径后的占空比函数
-def cal_duty_cycle_in_rect_add(cropped_rotated_image, edge_length):
-    # 中值滤波去除面积微小的区域
-    cropped_rotated_image = cv2.medianBlur(cropped_rotated_image, 3)
-
-    print("根据占空比特征检测缺陷")
-    # 是否存在堵孔缺陷的标志
-    closed_holes_flag = 0
-    # print("before shape: ",cropped_rotated_image.shape)
-    # print("edge_length: ",edge_length)
-
-    # print("计算窗口内孔洞数量前的图像尺寸：",cropped_rotated_image.shape)
-    # print("窗口的长度：",edge_length)
-    img = cropped_rotated_image.copy()
-    width_0 = img.shape[1]  # numpy的shape方法和
-    height_0 = img.shape[0]
-    # 减小尺寸后的图像
-    mini_img = img[5:(height_0 - 5), 5:(width_0 - 5)]
-    all_images.append((mini_img, "mini_img"))  # 填入列表
-    print("mini_img shape: ", mini_img.shape)
-
-    # 减小后的尺寸
-    width = mini_img.shape[1]  # numpy的shape方法和
-    height = mini_img.shape[0]
-    # print("width:",width)
-    # print("height:",height)
-
-    cv_show("mini:", mini_img)
-    th = mini_img.max()  # 因为从二值图像转换RGB-->灰度图,灰度图像也是有两个值th和0
-    S = float(edge_length * edge_length)  # 计算滑块的面积
-    gray_value_S = S * float(th)  # 当滑块全部落在目标区域内的时候，总的灰度值的和
-
-    # 初始化一个表示孔洞数量的二维数组
-    rate_arr = np.zeros(
-        [math.ceil((height - edge_length) / 10), math.ceil((width - edge_length) / 10)])  # math.ceil向上取整
-    # print("二维数组shape: ",cons_num_arr.shape)
-
-    min_value_rate = 1.0
-    # 为提高运算速度，左右和上下相邻两个窗口间隔10px
-
-    black_img = np.zeros_like(mini_img)  # 创建一个同大小的(0,0,0)黑色图像
-    white_img = black_img
-    white_img_rgb = cv2.cvtColor(white_img, cv2.COLOR_GRAY2BGR)
-
-    mini_img_rgb = cv2.cvtColor(mini_img, cv2.COLOR_GRAY2BGR)
-    for row in range(0, int(height - edge_length), 10):
-        for col in range(0, int(width - edge_length), 10):
-            temp_img = mini_img[int(row):int(row + edge_length), int(col):int(col + edge_length)]
-            temp_contours, hierarchy = cv2.findContours(temp_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-            box = [[col, row], [col + edge_length, row], [col + edge_length, row + edge_length],
-                   [col, row + edge_length]]  # 堵孔的矩形框
-            box = np.array(box)  # list to ndarray
-            # print("temp box: ",box)
-            temp_sum = temp_img.sum()
-            # print("temp_sum value: ", temp_sum)
-            temp_rate = float(temp_sum / gray_value_S)
-            rate_arr[int(row / 10)][int(col / 10)] = temp_rate
-
-            # print("temp_sum value / gray_value_S={}".format(temp_sum / gray_value_S))
-            if temp_rate < min_value_rate:
-                min_value_rate = temp_rate
-
-            if temp_rate < 0.05:
-                # mini_img_with_rect = cv2.drawContours(mini_img_rgb, [box], 0, (0, 0, 255), 1)
-                cv2.drawContours(white_img, [box], 0, (255, 255, 255), cv2.FILLED)
-                # print('*'*5,'堵孔区域')
-                # cal_mean_hole_size(temp_contours)
-                # cv_show("mini_img_with_rect: ", mini_img_with_rect)
-            elif temp_rate > 0.05:
-                print('*' * 5, '正常区域')
-                cal_mean_hole_size(temp_contours)
-
-    # 把检测的滑动窗口用寻找轮廓的算法连接起来
-    contours, _ = cv2.findContours(white_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-
-    # cv2.drawContours(white_img_rgb,contours,-1,(0,0,255),thickness=1)
-    # cv2.imshow("contours",white_img_rgb)
-
-    cv2.drawContours(mini_img_rgb, contours, -1, (0, 0, 255), thickness=2)
-    cv2.imshow("contours", mini_img_rgb)
-
-    print("min_value_rate: ", min_value_rate)
-    if min_value_rate < 0.05:
-        print("该过滤网存在堵孔缺陷")
-    else:
-        print("该过滤网不存在堵孔缺陷")
-
-    cv2.imshow("white with rect", white_img)
-
-    cv2.waitKey(0)
-
-    return rate_arr
-
-
-# 计算窗口内孔洞的数量，并返回一个二维数组ndarray,以窗口内的孔洞的数量为判断标准
-def cal_cons_in_rect(cropped_rotated_image, edge_length):
-    print("根据窗口内孔洞的数量检测缺陷")
-
-    # 是否存在堵孔缺陷的标志
-    closed_holes_flag = 0
-    # print("before shape: ",cropped_rotated_image.shape)
-    # print("edge_length: ",edge_length)
-
-    # print("计算窗口内孔洞数量前的图像尺寸：",cropped_rotated_image.shape)
-    # print("窗口的长度：",edge_length)
-    img = cropped_rotated_image.copy()
-    width_0 = img.shape[1]  # numpy的shape方法和
-    height_0 = img.shape[0]
-
-    mini_img = img[5:(height_0 - 5), 5:(width_0 - 5)]
-    print("mini_img shape: ", mini_img.shape)
-
-    width = mini_img.shape[1]  # numpy的shape方法和
-    height = mini_img.shape[0]
-
-    # cv_show("mini:", mini_img)
-
-    # print("width:",width)
-    # print("height:",height)
-
-    # 初始化一个表示孔洞数量的二维数组
-    cons_num_arr = np.zeros(
-        [math.ceil((height - edge_length) / 10), math.ceil((width - edge_length) / 10)])  # math.ceil向上取整
-    # print("二维数组shape: ",cons_num_arr.shape)
-
-    tem_row = 0
-    # 为提高运算速度，左右和上下相邻两个窗口间隔10px
-    for row in range(0, int(height - edge_length), 10):
-        for col in range(0, int(width - edge_length), 10):
-            temp_img = mini_img[int(row):int(row + edge_length), int(col):int(col + edge_length)]
-            box = [[col, row], [col + edge_length, row], [col + edge_length, row + edge_length],
-                   [col, row + edge_length]]  # 堵孔的矩形框
-            box = np.array(box)  # list to ndarray
-            # print("temp box: ",box)
-            # 在分割后的图像找轮廓
-            contours, hierarchy = cv2.findContours(temp_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-            # print("删除前轮廓的数量：",len(contours))
-
-            del_cons_idx = []  # 要删除的下标
-            cons_area = []
-            for idx in range(len(contours)):
-                temp_area = cv2.contourArea(contours[idx])  # 用面积判断轮廓包围的是噪声还是孔洞
-                cons_area.append(temp_area)
-                if temp_area < 2:  # 用2像素的大小辨别噪声
-                    del_cons_idx.append(idx)
-
-            # 从contours里删除噪声的轮廓
-            while (True):
-                if len(del_cons_idx) > 0:
-                    del_index = del_cons_idx.pop()
-                    del contours[del_index]
-                else:
-                    break
-
-            # print("删除成功！")
-            # print("删除后轮廓的数量：",len(contours))
-            temp_img_rgb = cv2.cvtColor(temp_img, cv2.COLOR_GRAY2BGR)
-            img_with_cons = cv2.drawContours(temp_img_rgb, contours, -1, (0, 0, 255), 1)
-
-            all_images.append((img_with_cons, "img_with_cons"))
-
-            temp_cons_num = len(contours)  # 窗口内的轮廓数量
-            if temp_cons_num < 10:  # 根据孔洞的数量，这里设置为10，小于10视为存在缺陷
-                closed_holes_flag = 1
-
-                # cv_show("堵孔区域",img_with_cons)
-                mini_img_rgb = cv2.cvtColor(mini_img, cv2.COLOR_GRAY2BGR)
-                mini_img_with_rect = cv2.drawContours(mini_img_rgb, [box], 0, (0, 0, 255), 2)
-                # cv_show("mini_img_with_rect: ", mini_img_with_rect)
-
-            cons_num_arr[int(row / 10)][int(col / 10)] = temp_cons_num
-
-            cv_show("temp_1 image_with_cons:", img_with_cons)
-
-    # 判断堵孔
-    if closed_holes_flag == 0:
-        print("不存在堵孔缺陷")
-    else:
-        print("存在堵孔缺陷")
-
-        # if col >= (math.ceil((width - edge_length) / 10)-1):                                      # 验证一行中最后一个窗口
-        #     cv_show("img_with_cons: ", img_with_cons)
-
-    # print("cons_num_arr_shape:",cons_num_arr.shape)
-    # print("cons_num_arr: ",cons_num_arr)
-    return cons_num_arr
-
-
-# 对图像进行旋转和裁剪操作
 def crap_and_rotate(img, rect):
     box = cv2.boxPoints(rect)
     box = np.int0(box)
@@ -609,32 +447,12 @@ def find_closed_holes(preprocessedimage):
     warped_gray = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
     all_images.append((warped_gray, "gray"))
 
-    # print("warpped gray: ", warped_gray)
-    # print("warpped gray shape: ", warped_gray.shape)
-    # print("warpped max vlaue:", np.max(warped_gray))
-    # print("warpped min value:", np.min(warped_gray))
-    # cv_show("warped_gray: ", warped_gray)
 
-    ###################################两种方法检测缺陷#########################################
+    ###################################占空比与最小生成树检测缺陷#########################################
     # 根据窗口内的占空比
-    # tranversal_image_detect(warped_gray, int(warped_gray.shape[0]/5))    # 以宽的五分之一为窗口的边长
     # 改进后占空比
     arr = cal_duty_cycle_in_rect(warped_gray, int(warped_gray.shape[0] / 5))
-    # arr = cal_duty_cycle_in_rect(new_img_with_rect, int(warped_gray.shape[0] / 5))
 
-    # 根据窗口内的孔洞的数量
-    # arr = cal_cons_in_rect(warped_gray,int(warped_gray.shape[0]/5))
-    # print("holes num arr shape: ", arr.shape)
-    # print("holes num arr: ", arr)
-    # print("holes num arr mean: ", np.mean(arr))
-    # print("holes num arr var: ", np.var(arr))
-    # print("holes num std_dev: ", np.std(arr, ddof=1))
-    # plt_show_muti_pic(all_images)     # 一次显示多个
-
-    #
-    # # 一个一个地显示图像
-    # for im in all_images:
-    #     plt_show_one_pic(im)
 
 
 # 对单个图像检测

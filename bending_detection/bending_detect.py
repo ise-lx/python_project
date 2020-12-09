@@ -9,7 +9,7 @@ filepath = "./bending_image/bianxing_test.jpg"
 #
 # filepath = "./bending_image/test2.JPG"
 # filepath = "./bending_image/light_test12.jpg"
-# filepath = "./bending_image/normal.jpg" 从
+# filepath = "./bending_image/normal.jpg"
 # bending_img_dictoryname = "./bending_images/"
 # unbending_img_dictoryname = "./unbending_images"
 
@@ -111,8 +111,7 @@ def pre_process(rowimage):
     # plt_show_one_pic("gray image", grayimage)
     resizedimage = row_image_resize(grayimage, IMAGE_WIDTH, IMAGE_HEIGHT)  # resize
 
-    cv_show("resizeimg",resizedimage)
-
+    cv_show("resizeimg", resizedimage)
 
     # 运用大津算法进行图像分割
     ret, im_th = cv2.threshold(resizedimage, 0, 255, cv2.THRESH_OTSU)
@@ -132,6 +131,8 @@ def pre_process(rowimage):
 # 计算最小外接矩形的四个角的坐标距离轮廓的大小
 # 传入轮廓和外接矩形的四个坐标
 def cal_distance(img, max_cont, coord_1, coord_2, coord_3, coord_4):
+    cv_show("img", img)
+
     # 初始化四个距离,取一个较大的数
     global point_1, point_2, point_3, point_4
     coord_1_min_distance = 100000.0
@@ -167,10 +168,10 @@ def cal_distance(img, max_cont, coord_1, coord_2, coord_3, coord_4):
             coord_4_min_distance = coord_4_temp_distance
             point_4 = con_point
 
-    img = cv2.circle(img, (point_1[0][0], point_1[0][1]), 3, (0, 255, 0), 2)
-    img = cv2.circle(img, (point_2[0][0], point_2[0][1]), 3, (0, 255, 0), 2)
-    img = cv2.circle(img, (point_3[0][0], point_3[0][1]), 3, (0, 255, 0), 2)
-    img = cv2.circle(img, (point_4[0][0], point_4[0][1]), 3, (0, 255, 0), 2)
+    img = cv2.circle(img, (point_1[0][0], point_1[0][1]), 3, (0, 0, 0), 3)
+    img = cv2.circle(img, (point_2[0][0], point_2[0][1]), 3, (0, 0, 0), 3)
+    img = cv2.circle(img, (point_3[0][0], point_3[0][1]), 3, (0, 0, 0), 3)
+    img = cv2.circle(img, (point_4[0][0], point_4[0][1]), 3, (0, 0, 0), 3)
     # print("在轮廓中四个点的坐标为(1-右下；2左下；3-左上；4-右上)：")
 
     # print(point_1)
@@ -320,7 +321,7 @@ def find_four_edges_contours(img, cnt, points):
         x_1_end = x_1[-1]
         y_1_end = y_1_pre[-1]
 
-        cv2.line(draw_img, (int(x_1_begin), int(y_1_begin)), (int(x_1_end), int(y_1_end)), (0, 0, 255), thickness=1)
+        cv2.line(draw_img, (int(x_1_begin), int(y_1_begin)), (int(x_1_end), int(y_1_end)), (0, 0, 0), thickness=1)
         # cv_show("line1",draw_img)
 
         plt.plot(x_1, y_1_pre)
@@ -365,7 +366,7 @@ def find_four_edges_contours(img, cnt, points):
         x_1_end = x_1_pre[-1]
         y_1_end = y_1[-1]
 
-        cv2.line(draw_img, (int(x_1_begin), int(y_1_begin)), (int(x_1_end), int(y_1_end)), (0, 0, 255), thickness=1)
+        cv2.line(draw_img, (int(x_1_begin), int(y_1_begin)), (int(x_1_end), int(y_1_end)), (0, 0, 0), thickness=1)
 
         plt.plot(x_1_pre, y_1)
         # plt.show()
@@ -406,7 +407,7 @@ def find_four_edges_contours(img, cnt, points):
         x_2_end = x_2[-1]
         y_2_end = y_2_pre[-1]
 
-        cv2.line(draw_img, (int(x_2_begin), int(y_2_begin)), (int(x_2_end), int(y_2_end)), (0, 0, 255), thickness=1)
+        cv2.line(draw_img, (int(x_2_begin), int(y_2_begin)), (int(x_2_end), int(y_2_end)), (0, 0, 0), thickness=1)
         plt.plot(x_2, y_2_pre)
         # plt.show()            # 显示
 
@@ -449,7 +450,7 @@ def find_four_edges_contours(img, cnt, points):
         x_2_end = x_2_pre[-1]
         y_2_end = y_2[-1]
 
-        cv2.line(draw_img, (int(x_2_begin), int(y_2_begin)), (int(x_2_end), int(y_2_end)), (0, 0, 255), thickness=1)
+        cv2.line(draw_img, (int(x_2_begin), int(y_2_begin)), (int(x_2_end), int(y_2_end)), (0, 0, 0), thickness=1)
         plt.plot(x_2_pre, y_2)
         # plt.show()
 
@@ -489,7 +490,7 @@ def find_four_edges_contours(img, cnt, points):
         x_3_end = x_3[-1]
         y_3_end = y_3_pre[-1]
 
-        cv2.line(draw_img, (int(x_3_begin), int(y_3_begin)), (int(x_3_end), int(y_3_end)), (0, 0, 255), thickness=1)
+        cv2.line(draw_img, (int(x_3_begin), int(y_3_begin)), (int(x_3_end), int(y_3_end)), (0, 0, 0), thickness=1)
 
         plt.plot(x_3, y_3_pre)
         # plt.show()            # 显示
@@ -532,7 +533,7 @@ def find_four_edges_contours(img, cnt, points):
         y_3_begin = y_3[0]
         x_3_end = x_3_pre[-1]
         y_3_end = y_3[-1]
-        cv2.line(draw_img, (int(x_3_begin), int(y_3_begin)), (int(x_3_end), int(y_3_end)), (0, 0, 255), thickness=1)
+        cv2.line(draw_img, (int(x_3_begin), int(y_3_begin)), (int(x_3_end), int(y_3_end)), (0, 0, 0), thickness=1)
 
         plt.plot(x_3_pre, y_3)
         # plt.show()
@@ -574,7 +575,7 @@ def find_four_edges_contours(img, cnt, points):
         x_4_end = x_4[-1]
         y_4_end = y_4_pre[-1]
 
-        cv2.line(draw_img, (int(x_4_begin), int(y_4_begin)), (int(x_4_end), int(y_4_end)), (0, 0, 255), thickness=1)
+        cv2.line(draw_img, (int(x_4_begin), int(y_4_begin)), (int(x_4_end), int(y_4_end)), (0, 0, 0), thickness=1)
 
         plt.plot(x_4, y_4_pre)
         # plt.show()            # 显示
@@ -620,7 +621,7 @@ def find_four_edges_contours(img, cnt, points):
         x_4_end = x_4_pre[-1]
         y_4_end = y_4[-1]
 
-        cv2.line(draw_img, (int(x_4_begin), int(y_4_begin)), (int(x_4_end), int(y_4_end)), (0, 0, 255), thickness=1)
+        cv2.line(draw_img, (int(x_4_begin), int(y_4_begin)), (int(x_4_end), int(y_4_end)), (0, 0, 0), thickness=1)
 
         cv2.imwrite("./unbending_image/lines_on_cont.jpg", draw_img)
         plt.plot(x_4_pre, y_4)

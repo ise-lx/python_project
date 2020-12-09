@@ -257,7 +257,7 @@ def judge_is_cracked_ellipse(preprocessimg, img, contours):
 
                 if (e < E) & (int(area) > AREA):
                     # if int(area) > 20000:
-                    cilcel = cv2.circle(img, centroid, 2, (0, 0, 255))
+                    cilcel = cv2.circle(img, centroid, 2, (0, 0, 255),thickness=2)
                     radian = 1 / 2 * math.atan(2 * u11 / (u20 - u02))
                     angle = radian / math.pi * 180
 

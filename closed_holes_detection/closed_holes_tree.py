@@ -13,7 +13,7 @@ import datetime
 # 待检测图像路径
 filepath = "./closed_holes_images/closed_hole.JPG"
 # filepath = "./unclosed_holes_images/1.jpg"
-
+# filepath = "./unclosed_holes_images/123.tif"
 # 设置图像的宽和高
 IMAGE_WIDTH = 750
 IMAGE_HEIGHT = 750
@@ -121,20 +121,24 @@ def pre_process(rowimage):
     all_images.append((grayimage, "grayimage"))  # 填入列表
     resizedimage = row_image_resize(grayimage, IMAGE_WIDTH, IMAGE_HEIGHT)  # resize
     all_images.append((resizedimage, "resizedimage"))  # 填入列表
-    # cv_show("resizeimg", resizedimage)
+    cv_show("resizeimg", resizedimage)
     # 运用大津算法进行图像分割
     ret, im_th = cv2.threshold(resizedimage, 0, 255, cv2.THRESH_OTSU)
-    # cv_show("image after OTSU", im_th)
+
+    # 使用全局固定阈值处理,增大阈值
+    ret, im_th = cv2.threshold(resizedimage, int(ret + 25), 255, cv2.THRESH_BINARY)
+
+    cv_show("image after OTSU", im_th)
     all_images.append((im_th, "OTSU"))
     return im_th
 
 
-
 # 不使用for循环求两个矩阵的欧氏距离
-def compute_distances_no_loops(mat_1,mat2):
-    dists = np.sqrt(-2*np.dot(mat_1, mat2.T) + np.sum(np.square(mat2), axis = 1) +
-                    np.transpose([np.sum(np.square(mat_1), axis = 1)]))
+def compute_distances_no_loops(mat_1, mat2):
+    dists = np.sqrt(-2 * np.dot(mat_1, mat2.T) + np.sum(np.square(mat2), axis=1) +
+                    np.transpose([np.sum(np.square(mat_1), axis=1)]))
     return dists
+
 
 # 对图像进行旋转和裁剪操作
 def crap_and_rotate(img, rect):
@@ -163,7 +167,7 @@ def cal_two_contours_distance(cont1, cont2):
     min_distance = 100000
     cont1_sq = np.squeeze(cont1)
     cont2_sq = np.squeeze(cont2)
-    dismat = compute_distances_no_loops(cont1_sq,cont2_sq)
+    dismat = compute_distances_no_loops(cont1_sq, cont2_sq)
     dist = np.min(dismat)
     return dist
 
@@ -179,7 +183,7 @@ def distance_matrix(contours):
 
     for i in range(int(len(contours) - 1)):
         cont1 = contours[i]
-        for j in range(i+1, len(contours)):
+        for j in range(i + 1, len(contours)):
             cont2 = contours[j]
             temp_distance = cal_two_contours_distance(cont1, cont2)  # 计算两个轮廓之间的最小距离
             dis_mat[i][j] = temp_distance
@@ -203,6 +207,11 @@ def mstreegeneratefrommat(dis_mat):
 
 # 改进后的占空比计算函数
 def cal_duty_cycle_in_rect(cropped_rotated_image, edge_length):
+    # 正常区域最小生成树权值
+    normal_tree_list = []
+    # 非正常区域最小生成树权值
+    unnormal_tree_list = []
+
     # 中值滤波去除面积微小的区域
     cropped_rotated_image = cv2.medianBlur(cropped_rotated_image, 3)
     print("根据占空比特征检测缺陷")
@@ -266,7 +275,7 @@ def cal_duty_cycle_in_rect(cropped_rotated_image, edge_length):
             if temp_rate < min_value_rate:
                 min_value_rate = temp_rate
 
-            if temp_rate < 0.07:
+            if temp_rate < 0.055:
                 # mini_img_with_rect = cv2.drawContours(mini_img_rgb, [box], 0, (0, 0, 255), 1)
                 dis_mat = distance_matrix(window_contours)
                 # print("邻接矩阵：\n", dis_mat)
@@ -277,13 +286,35 @@ def cal_duty_cycle_in_rect(cropped_rotated_image, edge_length):
                     weights_sum_value += tree[i][2]
                 # print("权重的和为：", weights_sum_value)
                 weights_sum_value_div_n = weights_sum_value / len(window_contours)
-                if weights_sum_value_div_n > 7.8:
+                if weights_sum_value_div_n > 6.8:
                     cv2.drawContours(white_img, [box], 0, (255, 255, 255), cv2.FILLED)
                 # print("weights_sum_value_div_n=", weights_sum_value_div_n)
                 # print("weights_sum/num=", weights_sum_value / len(window_contours))
 
                 # cv_show("mini_img_with_rect: ", mini_img_with_rect)
                 # print("轮廓的数量：", len(window_contours))
+                #
+    #         else:
+    #             dis_mat = distance_matrix(window_contours)
+    #             # print("邻接矩阵：\n", dis_mat)
+    #             tree = mstreegeneratefrommat(dis_mat)
+    #             # print("最小生成树为：\n", tree)
+    #             weights_sum_value = 0.
+    #             for i in range(len(tree)):
+    #                 weights_sum_value += tree[i][2]
+    #             # print("权重的和为：", weights_sum_value)
+    #             weights_sum_value_div_n = weights_sum_value / len(window_contours)
+    #             normal_tree_list.append(weights_sum_value_div_n)  # 把正常区域的最小生成树权值加进去
+    #             if weights_sum_value_div_n > 6.8:
+    #                 cv2.drawContours(white_img, [box], 0, (255, 255, 255), cv2.FILLED)
+    #
+    # print("正常区域最小生成树权值列表：", normal_tree_list)
+    # f1 = open("normal_tree_list.txt", 'w')
+    #
+    # for line in normal_tree_list:
+    #     f1.write(str(line) + "\n")
+    # f1.close()
+    # print("正常区域占空比列表的长度：", len(normal_tree_list))
 
     # 把检测的滑动窗口用轮廓算法连接起来
     contours, _ = cv2.findContours(white_img, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
