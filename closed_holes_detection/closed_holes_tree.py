@@ -12,6 +12,10 @@ import datetime
 
 # 待检测图像路径
 filepath = "./closed_holes_images/closed_hole.JPG"
+# filepath = "./test_set/close/no/3.jpg"
+# filepath = "./test_set/close/yes/4.jpg"
+# filepath = "./test_set/close/yes/6.jpg"
+# filepath = "./test_set/close/yes/5.jpg"
 # filepath = "./unclosed_holes_images/1.jpg"
 # filepath = "./unclosed_holes_images/123.tif"
 # 设置图像的宽和高

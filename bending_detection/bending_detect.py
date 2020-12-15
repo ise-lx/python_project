@@ -4,12 +4,12 @@ import matplotlib.pyplot as plt
 import os
 import math
 
-filepath = "./bending_image/bianxing_test.jpg"
+# filepath = "./bending_image/bianxing_test.jpg"
 # filepath = "./bending_image/test3.jpg"
-#
+
 # filepath = "./bending_image/test2.JPG"
 # filepath = "./bending_image/light_test12.jpg"
-# filepath = "./bending_image/normal.jpg"
+filepath = "./bending_image/normal.jpg"
 # bending_img_dictoryname = "./bending_images/"
 # unbending_img_dictoryname = "./unbending_images"
 

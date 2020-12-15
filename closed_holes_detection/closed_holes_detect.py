@@ -19,7 +19,10 @@ import matplotlib.pylab as plt
 
 
 # 待检测图像路径
-filepath = "./closed_holes_images/closed_hole.JPG"
+# filepath = "./closed_holes_images/closed_hole.JPG"
+# filepath = "./test_set/close/yes/4.jpg"
+# filepath = "./test_set/close/yes/6.jpg"
+filepath = "./test_set/close/yes/5.jpg"
 # filepath = "./closed_holes_images/4.jpg"
 # filepath = "./closed_holes_images/closed_holes_circle.jpg"
 # filepath = "./closed_holes_images/closed_holes_3.jpg"

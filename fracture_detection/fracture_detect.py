@@ -17,6 +17,7 @@ import math
 filepath = "./fracture_images/crack1.jpg"
 # filepath = "./fracture_images/crack2.jpg"
 # filepath = "./unfracture_images/paper_img1.jpg"
+# filepath = "./fracture_images/crack4.jpg"
 
 # lost_corner_img_dictoryname = "./closed_holes_images"
 # unlost_corner_img_dictoryname = "./unclosed_holes_images"
@@ -81,6 +82,7 @@ def cv_show(name, img):
 def row_image_resize(image, width, height):
     # image输入图像，width，height 期望得到的宽和高
     image = cv2.resize(image, (width, height))
+    cv_show("resized image",image)
     # print("resized image:", image.shape)
     return image
 
